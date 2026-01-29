@@ -8,8 +8,8 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 //hello 
-// Bind server URL
-builder.WebHost.UseUrls("http://localhost:5171");
+// Bind server URL - listen on localhost and network IP
+builder.WebHost.UseUrls("http://localhost:5171", "http://192.168.1.41:5171");
 
 // --------------------
 // Services
@@ -23,9 +23,12 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
+    // Use a specific version instead of AutoDetect to avoid connection issues during startup
+    var serverVersion = new MySqlServerVersion(new Version(8, 0, 21));
+    
     options.UseMySql(
         connectionString,
-        ServerVersion.AutoDetect(connectionString)
+        serverVersion
     );
 });
 
