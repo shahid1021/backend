@@ -9,7 +9,8 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 //hello 
 // Bind server URL - listen on localhost and network IP
-builder.WebHost.UseUrls("http://localhost:5171", "http://192.168.1.41:5171");
+builder.WebHost.UseUrls("http://0.0.0.0:5171");
+
 
 // --------------------
 // Services
@@ -34,6 +35,14 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // JWT helper
 builder.Services.AddScoped<JwtService>();
+
+// AI service (Grok-ready)
+builder.Services.AddScoped<GroqAiService>();
+
+builder.Services.AddScoped<FileTextExtractor>();
+
+
+
 
 // --------------------
 // Swagger

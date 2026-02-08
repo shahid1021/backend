@@ -1,5 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using StudentAPI;
 
 namespace StudentAPI.Controllers
@@ -17,6 +17,9 @@ namespace StudentAPI.Controllers
             _environment = environment;
         }
 
+        // --------------------
+        // GET ALL PROJECTS
+        // --------------------
         [HttpGet]
         public IActionResult Get()
         {
@@ -24,6 +27,9 @@ namespace StudentAPI.Controllers
             return Ok(projects);
         }
 
+        // --------------------
+        // GET PROJECT FILES
+        // --------------------
         [HttpGet("{projectId}/files")]
         [Authorize]
         public IActionResult GetProjectFiles(int projectId)
@@ -51,44 +57,54 @@ namespace StudentAPI.Controllers
             }
         }
 
+        // --------------------
+        // UPLOAD FILE (FIXED FOR SWAGGER)
+        // --------------------
+        [ApiExplorerSettings(IgnoreApi = true)]
+
         [HttpPost("{projectId}/upload")]
         [Authorize]
-        public async Task<IActionResult> UploadFile(int projectId, [FromForm] IFormFile File)
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadFile(
+            int projectId,
+            [FromForm(Name = "file")] IFormFile file
+        )
         {
             try
             {
-                if (File == null || File.Length == 0)
+                if (file == null || file.Length == 0)
                     return BadRequest(new { error = "No file uploaded" });
 
-                // Get user ID from JWT token
                 var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
                 if (userIdClaim == null)
                     return Unauthorized(new { error = "User not found" });
-                
+
                 int userId = int.Parse(userIdClaim.Value);
 
-                // Create upload directory if it doesn't exist
-                var uploadPath = Path.Combine(_environment.ContentRootPath, "Uploads", "Projects", projectId.ToString());
+                var uploadPath = Path.Combine(
+                    _environment.ContentRootPath,
+                    "Uploads",
+                    "Projects",
+                    projectId.ToString()
+                );
+
                 Directory.CreateDirectory(uploadPath);
 
-                // Generate unique filename but keep structure: GUID_originalname.ext
-                var originalFileName = File.FileName;
+                var originalFileName = file.FileName;
                 var fileName = $"{Guid.NewGuid()}_{originalFileName}";
                 var filePath = Path.Combine(uploadPath, fileName);
 
-                // Save file to disk
                 using (var stream = new FileStream(filePath, FileMode.Create))
                 {
-                    await File.CopyToAsync(stream);
+                    await file.CopyToAsync(stream);
                 }
 
-                // Save file info to database
                 var projectFile = new StudentAPI.Models.ProjectFile
                 {
                     ProjectId = projectId,
                     FileName = fileName,
                     OriginalFileName = originalFileName,
-                    FileSize = File.Length,
+                    FileSize = file.Length,
                     FilePath = filePath,
                     UploadedBy = userId,
                     UploadedAt = DateTime.UtcNow
@@ -97,10 +113,11 @@ namespace StudentAPI.Controllers
                 _context.ProjectFiles.Add(projectFile);
                 await _context.SaveChangesAsync();
 
-                return Ok(new { 
+                return Ok(new
+                {
                     message = "File uploaded successfully",
-                    fileName = fileName,
-                    projectId = projectId
+                    fileName,
+                    projectId
                 });
             }
             catch (Exception ex)
@@ -109,26 +126,26 @@ namespace StudentAPI.Controllers
             }
         }
 
+        // --------------------
+        // DELETE FILE
+        // --------------------
         [HttpDelete("{projectId}/files/{fileName}")]
         [Authorize]
         public IActionResult DeleteFile(int projectId, string fileName)
         {
             try
             {
-                // Find file in database
                 var fileRecord = _context.ProjectFiles
                     .FirstOrDefault(f => f.ProjectId == projectId && f.FileName == fileName);
 
                 if (fileRecord == null)
                     return NotFound(new { error = "File not found" });
 
-                // Delete physical file
                 if (System.IO.File.Exists(fileRecord.FilePath))
                 {
                     System.IO.File.Delete(fileRecord.FilePath);
                 }
 
-                // Delete from database
                 _context.ProjectFiles.Remove(fileRecord);
                 _context.SaveChanges();
 
@@ -140,13 +157,15 @@ namespace StudentAPI.Controllers
             }
         }
 
+        // --------------------
+        // DOWNLOAD FILE
+        // --------------------
         [HttpGet("{projectId}/files/{fileName}/download")]
         [Authorize]
         public IActionResult DownloadFile(int projectId, string fileName)
         {
             try
             {
-                // Find file in database
                 var fileRecord = _context.ProjectFiles
                     .FirstOrDefault(f => f.ProjectId == projectId && f.FileName == fileName);
 
@@ -157,8 +176,8 @@ namespace StudentAPI.Controllers
                     return NotFound(new { error = "Physical file not found" });
 
                 var fileBytes = System.IO.File.ReadAllBytes(fileRecord.FilePath);
-                
-                return File(fileBytes, "application/pdf", fileRecord.OriginalFileName);
+
+                return File(fileBytes, "application/octet-stream", fileRecord.OriginalFileName);
             }
             catch (Exception ex)
             {
@@ -166,14 +185,22 @@ namespace StudentAPI.Controllers
             }
         }
 
+        // --------------------
+        // SYNC EXISTING FILES
+        // --------------------
         [HttpPost("{projectId}/sync-files")]
         [Authorize]
         public IActionResult SyncExistingFiles(int projectId)
         {
             try
             {
-                var uploadPath = Path.Combine(_environment.ContentRootPath, "Uploads", "Projects", projectId.ToString());
-                
+                var uploadPath = Path.Combine(
+                    _environment.ContentRootPath,
+                    "Uploads",
+                    "Projects",
+                    projectId.ToString()
+                );
+
                 if (!Directory.Exists(uploadPath))
                     return Ok(new { message = "No files to sync" });
 
@@ -183,17 +210,16 @@ namespace StudentAPI.Controllers
                 foreach (var filePath in existingFiles)
                 {
                     var fileName = Path.GetFileName(filePath);
-                    
-                    // Check if already in database
-                    var exists = _context.ProjectFiles.Any(f => f.FileName == fileName);
-                    if (exists) continue;
 
-                    // Extract original name (remove GUID prefix)
-                    var originalFileName = fileName.Contains('_') 
-                        ? fileName.Substring(fileName.IndexOf('_') + 1) 
+                    if (_context.ProjectFiles.Any(f => f.FileName == fileName))
+                        continue;
+
+                    var originalFileName = fileName.Contains('_')
+                        ? fileName.Substring(fileName.IndexOf('_') + 1)
                         : fileName;
 
                     var fileInfo = new FileInfo(filePath);
+
                     var projectFile = new StudentAPI.Models.ProjectFile
                     {
                         ProjectId = projectId,
@@ -201,8 +227,8 @@ namespace StudentAPI.Controllers
                         OriginalFileName = originalFileName,
                         FileSize = fileInfo.Length,
                         FilePath = filePath,
-                        UploadedBy = 1, // Default user
-                        UploadedAt = fileInfo.CreationTime
+                        UploadedBy = 1,
+                        UploadedAt = fileInfo.CreationTimeUtc
                     };
 
                     _context.ProjectFiles.Add(projectFile);
@@ -220,4 +246,3 @@ namespace StudentAPI.Controllers
         }
     }
 }
-
