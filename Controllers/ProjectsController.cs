@@ -1,5 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using StudentAPI;
 
 namespace StudentAPI.Controllers
@@ -28,10 +32,39 @@ namespace StudentAPI.Controllers
         }
 
         // --------------------
-        // GET PROJECT FILES
+        // GET COMPLETED PROJECTS
         // --------------------
+        [HttpGet("completed")]
+        public IActionResult GetCompletedProjects()
+        {
+            try
+            {
+                var completedProjects = _context.Projects
+                    .Where(p => p.Status == "Completed")
+                    .OrderByDescending(p => p.DateCompleted)
+                    .Select(p => new
+                    {
+                        id = p.ProjectId,
+                        title = p.Title,
+                        abstraction = p.Abstraction,
+                        description = p.Description,
+                        createdBy = p.CreatedBy,
+                        batch = p.Batch,
+                        teamMembers = p.TeamMembers,
+                        dateCompleted = p.DateCompleted,
+                        status = p.Status,
+                        isStudent = false
+                    })
+                    .ToList();
+
+                return Ok(completedProjects);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
         [HttpGet("{projectId}/files")]
-        [Authorize]
         public IActionResult GetProjectFiles(int projectId)
         {
             try
@@ -58,71 +91,127 @@ namespace StudentAPI.Controllers
         }
 
         // --------------------
-        // UPLOAD FILE (FIXED FOR SWAGGER)
+        // UPLOAD FILE
         // --------------------
-        [ApiExplorerSettings(IgnoreApi = true)]
-
         [HttpPost("{projectId}/upload")]
-        [Authorize]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> UploadFile(
             int projectId,
-            [FromForm(Name = "file")] IFormFile file
+            [FromForm(Name = "File")] IFormFile file,
+            [FromForm] string? projectName,
+            [FromForm] string? teamMembers,
+            [FromForm] string? batch,
+            [FromForm] string? createdBy
         )
         {
             try
             {
-                if (file == null || file.Length == 0)
-                    return BadRequest(new { error = "No file uploaded" });
+                // Check authorization header
+                var authHeader = Request.Headers["Authorization"].ToString();
+                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                    return Unauthorized(new { error = "Missing or invalid authorization header" });
 
-                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-                if (userIdClaim == null)
-                    return Unauthorized(new { error = "User not found" });
+                var token = authHeader.Substring("Bearer ".Length).Trim();
 
-                int userId = int.Parse(userIdClaim.Value);
+                // Validate token and extract claims
+                var jwtSettings = new ConfigurationBuilder()
+                    .AddJsonFile("appsettings.json")
+                    .Build()
+                    .GetSection("Jwt");
 
-                var uploadPath = Path.Combine(
-                    _environment.ContentRootPath,
-                    "Uploads",
-                    "Projects",
-                    projectId.ToString()
-                );
+                var key = Encoding.UTF8.GetBytes(jwtSettings["Key"] ?? "");
+                var tokenHandler = new JwtSecurityTokenHandler();
 
-                Directory.CreateDirectory(uploadPath);
-
-                var originalFileName = file.FileName;
-                var fileName = $"{Guid.NewGuid()}_{originalFileName}";
-                var filePath = Path.Combine(uploadPath, fileName);
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
+                try
                 {
-                    await file.CopyToAsync(stream);
+                    var principal = tokenHandler.ValidateToken(token, new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(key),
+                        ValidateIssuer = true,
+                        ValidIssuer = jwtSettings["Issuer"],
+                        ValidateAudience = true,
+                        ValidAudience = jwtSettings["Audience"],
+                        ValidateLifetime = true,
+                        ClockSkew = TimeSpan.Zero
+                    }, out SecurityToken validatedToken);
+
+                    var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier);
+                    if (userIdClaim == null)
+                        return Unauthorized(new { error = "User ID not found in token" });
+
+                    if (!int.TryParse(userIdClaim.Value, out int userId))
+                        return Unauthorized(new { error = "Invalid user ID in token" });
+
+                    if (file == null || file.Length == 0)
+                        return BadRequest(new { error = "No file uploaded" });
+
+                    var uploadPath = Path.Combine(
+                        _environment.ContentRootPath,
+                        "Uploads",
+                        "Projects",
+                        projectId.ToString()
+                    );
+
+                    Directory.CreateDirectory(uploadPath);
+
+                    var originalFileName = file.FileName;
+                    var fileName = $"{Guid.NewGuid()}_{originalFileName}";
+                    var filePath = Path.Combine(uploadPath, fileName);
+
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+
+                    // Create Project record for completed projects FIRST
+                    var newProject = new StudentAPI.Models.Project
+                    {
+                        Title = projectName ?? "Untitled Project",
+                        Description = originalFileName,
+                        Abstraction = originalFileName,
+                        Status = "Completed",
+                        CreatedBy = createdBy ?? "Student",
+                        Batch = batch ?? DateTime.Now.Year.ToString(),
+                        TeamMembers = teamMembers ?? "Solo",
+                        TeacherId = 1,
+                        CreatedAt = DateTime.UtcNow,
+                        DateCompleted = DateTime.UtcNow
+                    };
+
+                    _context.Projects.Add(newProject);
+                    await _context.SaveChangesAsync();
+
+                    // Now create ProjectFile with the actual project ID
+                    var projectFile = new StudentAPI.Models.ProjectFile
+                    {
+                        ProjectId = newProject.ProjectId,
+                        FileName = fileName,
+                        OriginalFileName = originalFileName,
+                        FileSize = file.Length,
+                        FilePath = filePath,
+                        UploadedBy = userId,
+                        UploadedAt = DateTime.UtcNow
+                    };
+
+                    _context.ProjectFiles.Add(projectFile);
+                    await _context.SaveChangesAsync();
+
+                    return Ok(new
+                    {
+                        message = "File uploaded successfully",
+                        fileName,
+                        projectId = newProject.ProjectId
+                    });
                 }
-
-                var projectFile = new StudentAPI.Models.ProjectFile
+                catch (SecurityTokenException ex)
                 {
-                    ProjectId = projectId,
-                    FileName = fileName,
-                    OriginalFileName = originalFileName,
-                    FileSize = file.Length,
-                    FilePath = filePath,
-                    UploadedBy = userId,
-                    UploadedAt = DateTime.UtcNow
-                };
-
-                _context.ProjectFiles.Add(projectFile);
-                await _context.SaveChangesAsync();
-
-                return Ok(new
-                {
-                    message = "File uploaded successfully",
-                    fileName,
-                    projectId
-                });
+                    return Unauthorized(new { error = "Invalid token", details = ex.Message });
+                }
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = ex.Message });
+                return StatusCode(500, new { error = ex.Message, details = ex.InnerException?.Message });
             }
         }
 
