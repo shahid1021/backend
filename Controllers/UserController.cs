@@ -101,7 +101,9 @@ namespace StudentAPI.Controllers
                 {
                     token = token,
                     role = user.Role,
-                    name = user.FirstName
+                    firstName = user.FirstName,
+                    lastName = user.LastName,
+                    name = $"{user.FirstName} {user.LastName}"
                 });
             }
             catch (Exception ex)
@@ -125,9 +127,44 @@ namespace StudentAPI.Controllers
 
                 return Ok(new
                 {
-                    name = user.FirstName,
+                    firstName = user.FirstName,
+                    lastName = user.LastName,
+                    name = $"{user.FirstName} {user.LastName}",
                     email = user.Email,
                     role = user.Role
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        [HttpPut("update-name")]
+        public IActionResult UpdateName([FromQuery] string email, [FromBody] UpdateNameRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(email))
+                    return BadRequest(new { message = "Email is required" });
+
+                var user = _context.Users.FirstOrDefault(u => u.Email == email);
+                
+                if (user == null)
+                    return NotFound(new { message = "User not found" });
+
+                user.FirstName = request.FirstName;
+                user.LastName = request.LastName;
+
+                _context.Users.Update(user);
+                _context.SaveChanges();
+
+                return Ok(new
+                {
+                    message = "Name updated successfully",
+                    firstName = user.FirstName,
+                    lastName = user.LastName,
+                    name = $"{user.FirstName} {user.LastName}"
                 });
             }
             catch (Exception ex)
