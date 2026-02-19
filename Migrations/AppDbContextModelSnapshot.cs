@@ -36,6 +36,9 @@ namespace StudentAPI.Migrations
                     b.Property<string>("Batch")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("CompletionStages")
+                        .HasColumnType("longtext");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -46,6 +49,9 @@ namespace StudentAPI.Migrations
                         .HasColumnType("datetime(6)");
 
                     b.Property<string>("Description")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("GroupNumber")
                         .HasColumnType("longtext");
 
                     b.Property<string>("Status")

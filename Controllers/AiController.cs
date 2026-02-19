@@ -288,4 +288,95 @@ public class AiController : ControllerBase
             return "";
         }
     }
+
+    // ==================== AI-POWERED SIMILARITY CHECK ====================
+    [HttpPost("ai-similarity")]
+    public async Task<IActionResult> AiSimilarityCheck(
+        [FromBody] DfdRequest request,
+        [FromServices] AppDbContext db,
+        [FromServices] GroqAiService groqAi
+    )
+    {
+        Console.WriteLine("🤖 AI SIMILARITY CHECK ENDPOINT CALLED!");
+
+        if (string.IsNullOrWhiteSpace(request.AbstractText))
+            return BadRequest(new { error = "Abstract is required" });
+
+        try
+        {
+            var uploadedText = request.AbstractText;
+
+            // Decode base64 if needed
+            try
+            {
+                byte[] data = Convert.FromBase64String(uploadedText);
+                uploadedText = ExtractTextFromBinary(data);
+            }
+            catch { /* Not base64, use as-is */ }
+
+            // Get all projects with abstractions
+            var allProjects = db.Projects
+                .Where(p => p.Abstraction != null && p.Abstraction != "")
+                .Select(p => new { p.ProjectId, p.Title, p.Abstraction, p.Batch, p.CreatedBy, p.TeamMembers })
+                .ToList();
+
+            Console.WriteLine($"📊 Checking against {allProjects.Count} projects with AI");
+
+            var results = new List<object>();
+
+            foreach (var project in allProjects)
+            {
+                var aiResult = await groqAi.CheckSimilarityAsync(
+                    uploadedText,
+                    project.Abstraction ?? "",
+                    project.Title ?? ""
+                );
+
+                if (aiResult != null)
+                {
+                    try
+                    {
+                        var parsed = System.Text.Json.JsonDocument.Parse(aiResult);
+                        var similarity = parsed.RootElement.GetProperty("similarity").GetInt32();
+                        var reason = parsed.RootElement.GetProperty("reason").GetString();
+
+                        if (similarity >= 20) // Only include if 20%+ similarity
+                        {
+                            results.Add(new
+                            {
+                                name = project.Title ?? "Unknown",
+                                batch = project.Batch ?? "N/A",
+                                group = project.TeamMembers ?? "N/A",
+                                createdBy = project.CreatedBy ?? "N/A",
+                                similarity = similarity,
+                                reason = reason
+                            });
+                        }
+                    }
+                    catch
+                    {
+                        Console.WriteLine($"⚠️ Could not parse AI response for {project.Title}");
+                    }
+                }
+            }
+
+            // Sort by similarity descending
+            results = results.OrderByDescending(r => ((dynamic)r).similarity).ToList();
+
+            return Ok(new
+            {
+                isDuplicate = results.Count > 0,
+                similarProjects = results,
+                totalChecked = allProjects.Count,
+                analysis = results.Count > 0
+                    ? $"AI found {results.Count} similar project(s)"
+                    : "AI confirms this is a unique project!"
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"💥 Exception: {ex.Message}");
+            return BadRequest(new { error = $"Error: {ex.Message}" });
+        }
+    }
 }

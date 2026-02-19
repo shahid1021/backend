@@ -151,3 +151,15 @@ C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\ap
 C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\StudentAPI.deps.json
 C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\StudentAPI.runtimeconfig.json
 C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\StudentAPI.staticwebassets.endpoints.json
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\web.config
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\appsettings.Development.json
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\appsettings.json
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\StudentAPI.deps.json
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\StudentAPI.runtimeconfig.json
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\StudentAPI.staticwebassets.endpoints.json
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\publish\web.config
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\publish\appsettings.Development.json
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\publish\appsettings.json
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\publish\StudentAPI.deps.json
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\publish\StudentAPI.runtimeconfig.json
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\publish\StudentAPI.staticwebassets.endpoints.json

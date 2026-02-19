@@ -10,6 +10,8 @@
         public string? CreatedBy { get; set; }
         public string? Batch { get; set; }
         public string? TeamMembers { get; set; }
+        public string? GroupNumber { get; set; }
+        public string? CompletionStages { get; set; }
         public int TeacherId { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? DateCompleted { get; set; }

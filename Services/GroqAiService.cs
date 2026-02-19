@@ -152,4 +152,64 @@ Format the response with clear sections and bullet points.
             return null;
         }
     }
+
+    public async Task<string?> CheckSimilarityAsync(string uploadedAbstract, string existingAbstract, string existingTitle)
+    {
+        if (string.IsNullOrEmpty(_apiKey))
+            return null;
+
+        var prompt = $@"Compare these two project abstracts and give a similarity percentage (0-100).
+
+UPLOADED ABSTRACT:
+{uploadedAbstract}
+
+EXISTING PROJECT: {existingTitle}
+EXISTING ABSTRACT:
+{existingAbstract}
+
+Respond ONLY in this exact JSON format, nothing else:
+{{""similarity"": <number>, ""reason"": ""<brief explanation>""}}";
+
+        var requestBody = new
+        {
+            model = "llama-3.1-8b-instant",
+            messages = new[]
+            {
+                new { role = "system", content = "You are a plagiarism detection expert. Compare abstracts and return similarity percentage as JSON only." },
+                new { role = "user", content = prompt }
+            },
+            temperature = 0.2,
+            max_tokens = 256
+        };
+
+        _httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", _apiKey);
+
+        try
+        {
+            var response = await _httpClient.PostAsync(
+                "https://api.groq.com/openai/v1/chat/completions",
+                new StringContent(
+                    JsonSerializer.Serialize(requestBody),
+                    Encoding.UTF8,
+                    "application/json"
+                )
+            );
+
+            if (!response.IsSuccessStatusCode) return null;
+
+            var responseContent = await response.Content.ReadAsStringAsync();
+            var jsonDoc = JsonDocument.Parse(responseContent);
+            return jsonDoc.RootElement
+                .GetProperty("choices")[0]
+                .GetProperty("message")
+                .GetProperty("content")
+                .GetString();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception in CheckSimilarityAsync: {ex.Message}");
+            return null;
+        }
+    }
 }

@@ -82,10 +82,13 @@ namespace StudentAPI.Controllers
         {
             try
             {
-                var user = _context.Users.FirstOrDefault(u => u.Email == request.Email && u.IsApproved);
+                var user = _context.Users.FirstOrDefault(u => u.Email == request.Email);
                 
                 if (user == null)
                     return NotFound(new { message = "User not found" });
+
+                if (!user.IsApproved)
+                    return StatusCode(403, new { message = "blocked" });
 
                 if (string.IsNullOrEmpty(user.PasswordHash))
                     return StatusCode(500, new { message = "Password hash missing" });
