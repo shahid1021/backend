@@ -18,7 +18,11 @@ namespace StudentAPI.Controllers
         }
 
         /// <summary>
-        /// Send a notification message from teacher to all students
+        /// Send a notification message.
+        /// - If teacherEmail belongs to a Teacher user, TeacherId is set to that teacher's User.Id
+        ///   (notification only visible to students under that teacher).
+        /// - If teacherEmail belongs to an Admin user (or is empty), TeacherId = 0
+        ///   (broadcast to ALL students).
         /// POST /api/notifications/send
         /// </summary>
         [HttpPost("send")]
@@ -31,23 +35,43 @@ namespace StudentAPI.Controllers
                     return BadRequest(new { error = "Message cannot be empty" });
                 }
 
+                int teacherId = 0; // default = admin broadcast
+                string senderName = request.TeacherName ?? "Admin";
+
+                if (!string.IsNullOrEmpty(request.TeacherEmail))
+                {
+                    var sender = _context.Users.FirstOrDefault(u => u.Email == request.TeacherEmail);
+                    if (sender != null)
+                    {
+                        senderName = $"{sender.FirstName} {sender.LastName}".Trim();
+                        if (sender.Role == "Teacher")
+                        {
+                            teacherId = sender.Id;
+                        }
+                        // Admin role → teacherId stays 0 (broadcast)
+                    }
+                }
+
                 var notification = new TeacherNotification
                 {
                     Message = request.Message,
-                    TeacherName = request.TeacherName ?? "Teacher",
-                    TeacherEmail = request.TeacherEmail ?? "teacher@school.edu",
+                    TeacherName = senderName,
+                    TeacherEmail = request.TeacherEmail ?? "",
+                    TeacherId = teacherId,
                     CreatedAt = DateTime.UtcNow
                 };
 
                 _context.TeacherNotifications.Add(notification);
                 await _context.SaveChangesAsync();
 
-                Console.WriteLine($"✅ Notification saved: {notification.Message}");
+                Console.WriteLine($"✅ Notification saved (TeacherId={teacherId}): {notification.Message}");
 
                 return Ok(new
                 {
                     success = true,
-                    message = "Notification sent to all students",
+                    message = teacherId == 0
+                        ? "Notification sent to all students"
+                        : "Notification sent to your students",
                     notificationId = notification.Id
                 });
             }
@@ -59,15 +83,54 @@ namespace StudentAPI.Controllers
         }
 
         /// <summary>
-        /// Get all notifications for students
+        /// Get notifications with optional scoping.
+        /// 
+        /// Query params:
+        ///   ?registerNumber=xxx  → Student view: returns only notifications from their teacher + admin broadcasts (TeacherId==0)
+        ///   ?teacherEmail=xxx    → Teacher view: returns only notifications sent by that teacher
+        ///   (no params)          → Admin view: returns ALL notifications
+        ///   
         /// GET /api/notifications/get
         /// </summary>
         [HttpGet("get")]
-        public async Task<IActionResult> GetNotifications()
+        public async Task<IActionResult> GetNotifications(
+            [FromQuery] string? registerNumber,
+            [FromQuery] string? teacherEmail)
         {
             try
             {
-                var notifications = _context.TeacherNotifications
+                IQueryable<TeacherNotification> query = _context.TeacherNotifications;
+
+                // ── Student view: show notifications from their teacher(s) + admin broadcasts ──
+                if (!string.IsNullOrEmpty(registerNumber))
+                {
+                    // Find all projects where this student is a team member
+                    var studentProjects = _context.Projects
+                        .Where(p => p.TeamMembers != null && p.TeamMembers.Contains(registerNumber))
+                        .Select(p => p.TeacherId)
+                        .Distinct()
+                        .ToList();
+
+                    // Filter: notifications from those teachers OR admin broadcasts (TeacherId == 0)
+                    query = query.Where(n => studentProjects.Contains(n.TeacherId) || n.TeacherId == 0);
+                }
+                // ── Teacher view: show only their own notifications ──
+                else if (!string.IsNullOrEmpty(teacherEmail))
+                {
+                    var teacher = _context.Users.FirstOrDefault(u => u.Email == teacherEmail);
+                    if (teacher != null)
+                    {
+                        var tid = teacher.Id;
+                        query = query.Where(n => n.TeacherId == tid);
+                    }
+                    else
+                    {
+                        return Ok(new { success = true, count = 0, notifications = new List<object>() });
+                    }
+                }
+                // ── Admin view: no filter, return everything ──
+
+                var notifications = query
                     .OrderByDescending(n => n.CreatedAt)
                     .ToList();
 
@@ -80,7 +143,8 @@ namespace StudentAPI.Controllers
                         id = n.Id,
                         message = n.Message,
                         senderName = n.TeacherName,
-                        timestamp = n.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")
+                        timestamp = n.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"),
+                        teacherId = n.TeacherId
                     }).ToList()
                 });
             }
@@ -92,7 +156,7 @@ namespace StudentAPI.Controllers
         }
 
         /// <summary>
-        /// Delete a notification (admin only)
+        /// Delete a notification
         /// DELETE /api/notifications/{id}
         /// </summary>
         [HttpDelete("{id}")]

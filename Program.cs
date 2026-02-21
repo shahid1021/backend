@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using StudentAPI.Controllers;
 using StudentAPI;
+using StudentAPI.Services;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -40,6 +41,9 @@ builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<GroqAiService>();
 
 builder.Services.AddScoped<FileTextExtractor>();
+
+// Email service for password reset
+builder.Services.AddScoped<EmailService>();
 
 
 

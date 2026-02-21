@@ -10,5 +10,16 @@ namespace StudentAPI.Models
         public string Role { get; set; } = string.Empty;
         public bool IsApproved { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public string? RegisterNumber { get; set; }
+
+        // Forgot Password OTP fields
+        public string? ResetOtp { get; set; }
+        public DateTime? ResetOtpExpiry { get; set; }
+
+        // Profile Photo fields
+        public string ProfilePhotoType { get; set; } = "none"; // none, avatar, image
+        public int ProfileAvatarIndex { get; set; } = 0;
+        public string? ProfilePhotoFileName { get; set; }
     }
 }

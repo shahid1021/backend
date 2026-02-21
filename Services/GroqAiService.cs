@@ -212,4 +212,77 @@ Respond ONLY in this exact JSON format, nothing else:
             return null;
         }
     }
+
+    /// Analyze what new features the uploaded project has compared to similar existing projects
+    public async Task<string?> AnalyzeNewFeaturesAsync(string uploadedAbstract, List<string> matchedProjectSummaries)
+    {
+        if (string.IsNullOrEmpty(_apiKey))
+            return null;
+
+        var existingList = string.Join("\n---\n", matchedProjectSummaries);
+
+        var prompt = $@"A teacher uploaded a student's project abstract. Similar projects already exist in the database.
+
+STUDENT'S NEW ABSTRACT:
+{uploadedAbstract}
+
+EXISTING SIMILAR PROJECTS:
+{existingList}
+
+Analyze and respond ONLY in this exact JSON format:
+{{
+  ""isUnique"": false,
+  ""summary"": ""<1-2 sentence summary of the similarity>"",
+  ""newFeatures"": [""<feature 1>"", ""<feature 2>""],
+  ""recommendation"": ""<brief advice for the teacher>""
+}}
+
+Rules:
+- ""newFeatures"" = specific things the student's project does that the existing ones do NOT
+- If the student project adds nothing new, set ""newFeatures"" to an empty array []
+- Keep each feature description short (under 15 words)
+- Be honest and precise";
+
+        var requestBody = new
+        {
+            model = "llama-3.1-8b-instant",
+            messages = new[]
+            {
+                new { role = "system", content = "You are a project evaluator. Analyze project abstracts and identify genuinely new features. Return JSON only, no markdown." },
+                new { role = "user", content = prompt }
+            },
+            temperature = 0.3,
+            max_tokens = 512
+        };
+
+        _httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", _apiKey);
+
+        try
+        {
+            var response = await _httpClient.PostAsync(
+                "https://api.groq.com/openai/v1/chat/completions",
+                new StringContent(
+                    JsonSerializer.Serialize(requestBody),
+                    Encoding.UTF8,
+                    "application/json"
+                )
+            );
+
+            if (!response.IsSuccessStatusCode) return null;
+
+            var responseContent = await response.Content.ReadAsStringAsync();
+            var jsonDoc = JsonDocument.Parse(responseContent);
+            return jsonDoc.RootElement
+                .GetProperty("choices")[0]
+                .GetProperty("message")
+                .GetProperty("content")
+                .GetString();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception in AnalyzeNewFeaturesAsync: {ex.Message}");
+            return null;
+        }
+    }
 }

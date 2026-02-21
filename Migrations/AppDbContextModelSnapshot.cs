@@ -127,6 +127,9 @@ namespace StudentAPI.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<int>("TeacherId")
+                        .HasColumnType("int");
+
                     b.Property<string>("TeacherName")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -168,6 +171,25 @@ namespace StudentAPI.Migrations
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("longtext");
+
+                    b.Property<int>("ProfileAvatarIndex")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ProfilePhotoFileName")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("ProfilePhotoType")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("RegisterNumber")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("ResetOtp")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("ResetOtpExpiry")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("Role")
                         .IsRequired()

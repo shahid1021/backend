@@ -91,6 +91,51 @@ namespace StudentAPI.Controllers
         }
 
         // --------------------
+        // GET PREVIOUS YEAR PROJECTS (Admin-uploaded, TeacherId=0)
+        // --------------------
+        [HttpGet("previous-year")]
+        public IActionResult GetPreviousYearProjects()
+        {
+            try
+            {
+                var projects = _context.Projects
+                    .Where(p => p.TeacherId == 0)
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Select(p => new
+                    {
+                        id = p.ProjectId,
+                        title = p.Title,
+                        description = p.Description,
+                        abstraction = p.Abstraction,
+                        createdBy = p.CreatedBy,
+                        batch = p.Batch,
+                        teamMembers = p.TeamMembers,
+                        status = p.Status,
+                        dateCompleted = p.DateCompleted,
+                        createdAt = p.CreatedAt,
+                        files = _context.ProjectFiles
+                            .Where(f => f.ProjectId == p.ProjectId)
+                            .Select(f => new
+                            {
+                                id = f.Id,
+                                fileName = f.FileName,
+                                displayName = f.OriginalFileName,
+                                size = f.FileSize,
+                                uploadDate = f.UploadedAt
+                            })
+                            .ToList()
+                    })
+                    .ToList();
+
+                return Ok(new { count = projects.Count, projects });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // --------------------
         // UPLOAD FILE
         // --------------------
         [HttpPost("{projectId}/upload")]
@@ -239,6 +284,47 @@ namespace StudentAPI.Controllers
                 _context.SaveChanges();
 
                 return Ok(new { message = "File deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // --------------------
+        // DOWNLOAD FILE (Public - for previous year projects)
+        // --------------------
+        [HttpGet("previous-year/{projectId}/files/{fileName}/download")]
+        public IActionResult DownloadPreviousYearFile(int projectId, string fileName)
+        {
+            try
+            {
+                var project = _context.Projects.FirstOrDefault(p => p.ProjectId == projectId && p.TeacherId == 0);
+                if (project == null)
+                    return NotFound(new { error = "Project not found or not a previous year project" });
+
+                var fileRecord = _context.ProjectFiles
+                    .FirstOrDefault(f => f.ProjectId == projectId && f.FileName == fileName);
+
+                if (fileRecord == null)
+                    return NotFound(new { error = "File not found" });
+
+                if (!System.IO.File.Exists(fileRecord.FilePath))
+                    return NotFound(new { error = "Physical file not found" });
+
+                var fileBytes = System.IO.File.ReadAllBytes(fileRecord.FilePath);
+                var contentType = "application/pdf";
+                if (fileRecord.OriginalFileName != null)
+                {
+                    if (fileRecord.OriginalFileName.EndsWith(".docx", StringComparison.OrdinalIgnoreCase))
+                        contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                    else if (fileRecord.OriginalFileName.EndsWith(".doc", StringComparison.OrdinalIgnoreCase))
+                        contentType = "application/msword";
+                    else if (fileRecord.OriginalFileName.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+                        contentType = "text/plain";
+                }
+
+                return File(fileBytes, contentType, fileRecord.OriginalFileName);
             }
             catch (Exception ex)
             {

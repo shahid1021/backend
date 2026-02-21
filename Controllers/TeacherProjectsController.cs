@@ -152,6 +152,85 @@ namespace StudentAPI.Controllers
                 return StatusCode(500, new { error = ex.Message });
             }
         }
+
+        // PUT /api/teacher-projects/{id}/add-member
+        [HttpPut("{id}/add-member")]
+        public IActionResult AddMember(int id, [FromBody] AddMemberRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.RegisterNumber))
+                    return BadRequest(new { error = "Register number is required" });
+
+                var project = _context.Projects.FirstOrDefault(p => p.ProjectId == id);
+                if (project == null)
+                    return NotFound(new { error = "Project not found" });
+
+                var currentMembers = (project.TeamMembers ?? "")
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(m => m.Trim())
+                    .Where(m => !string.IsNullOrEmpty(m))
+                    .ToList();
+
+                if (currentMembers.Count >= 4)
+                    return BadRequest(new { error = "Maximum 4 members allowed per group" });
+
+                var newRegNo = request.RegisterNumber.Trim().ToUpper();
+
+                if (currentMembers.Any(m => m.Equals(newRegNo, StringComparison.OrdinalIgnoreCase)))
+                    return BadRequest(new { error = "This register number is already in the group" });
+
+                currentMembers.Add(newRegNo);
+                project.TeamMembers = string.Join(", ", currentMembers);
+                _context.SaveChanges();
+
+                return Ok(new
+                {
+                    message = "Member added successfully",
+                    groupMembers = project.TeamMembers
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // GET /api/teacher-projects/by-student?registerNumber=REG001
+        [HttpGet("by-student")]
+        public IActionResult GetByStudent([FromQuery] string? studentName, [FromQuery] string? registerNumber)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(studentName) && string.IsNullOrEmpty(registerNumber))
+                    return BadRequest(new { error = "studentName or registerNumber is required" });
+
+                var searchTerm = (!string.IsNullOrEmpty(registerNumber) ? registerNumber : studentName)!.Trim().ToLower();
+
+                var projects = _context.Projects
+                    .Where(p => p.TeamMembers != null && p.TeamMembers.ToLower().Contains(searchTerm))
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Select(p => new
+                    {
+                        id = p.ProjectId,
+                        groupNumber = p.GroupNumber ?? "",
+                        groupMembers = p.TeamMembers ?? "",
+                        projectName = p.Title ?? "",
+                        completionStages = string.IsNullOrEmpty(p.CompletionStages)
+                            ? new List<bool> { false, false, false, false, false, false, false, false, false, false }
+                            : System.Text.Json.JsonSerializer.Deserialize<List<bool>>(p.CompletionStages),
+                        status = p.Status,
+                        createdAt = p.CreatedAt
+                    })
+                    .ToList();
+
+                return Ok(projects);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
     }
 
     // Request models
@@ -166,5 +245,10 @@ namespace StudentAPI.Controllers
     public class UpdateStagesRequest
     {
         public List<bool> CompletionStages { get; set; } = new();
+    }
+
+    public class AddMemberRequest
+    {
+        public string RegisterNumber { get; set; } = string.Empty;
     }
 }

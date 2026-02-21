@@ -84,6 +84,56 @@ namespace StudentAPI.Controllers
             }
         }
 
+        // ==================== ADD USER ====================
+        [HttpPost("users")]
+        public IActionResult CreateUser([FromBody] AdminCreateUserRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
+                    return BadRequest(new { error = "Email and Password are required" });
+
+                var existing = _context.Users.FirstOrDefault(u => u.Email == request.Email);
+                if (existing != null)
+                    return BadRequest(new { error = "Email already exists" });
+
+                var user = new User
+                {
+                    FirstName = request.FirstName ?? "",
+                    LastName = request.LastName ?? "",
+                    Email = request.Email,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                    Role = request.Role ?? "Student",
+                    IsApproved = true,
+                    CreatedAt = DateTime.UtcNow,
+                    RegisterNumber = request.RegisterNumber
+                };
+
+                _context.Users.Add(user);
+                _context.SaveChanges();
+
+                return Ok(new
+                {
+                    message = "User created successfully",
+                    user = new
+                    {
+                        user.Id,
+                        user.FirstName,
+                        user.LastName,
+                        user.Email,
+                        user.Role,
+                        user.IsApproved,
+                        user.RegisterNumber,
+                        user.CreatedAt
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
         // ==================== UPDATE USER ROLE ====================
         [HttpPut("users/{id}/role")]
         public IActionResult UpdateUserRole(int id, [FromBody] UpdateRoleRequest request)
@@ -388,5 +438,15 @@ namespace StudentAPI.Controllers
     public class UpdateRoleRequest
     {
         public string Role { get; set; } = string.Empty;
+    }
+
+    public class AdminCreateUserRequest
+    {
+        public string? FirstName { get; set; }
+        public string? LastName { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string? Role { get; set; }
+        public string? RegisterNumber { get; set; }
     }
 }

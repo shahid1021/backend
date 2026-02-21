@@ -130,9 +130,10 @@ public class AiController : ControllerBase
                 Console.WriteLine($"📝 Using text as-is ({uploadedText.Length} characters)");
             }
             
+            var originalText = uploadedText; // Keep original case for AI analysis
             uploadedText = uploadedText.ToLower();
             
-            // 1️⃣ Get ALL projects from database (regardless of status)
+            // 1️⃣ Get ALL projects from database
             var allProjects = db.Projects
                 .Select(p => new
                 {
@@ -148,28 +149,21 @@ public class AiController : ControllerBase
                 .ToList();
 
             Console.WriteLine($"📊 Found {allProjects.Count} projects in database");
-            
-            // Log all projects found
-            foreach(var proj in allProjects)
-            {
-                Console.WriteLine($"  - {proj.Title}");
-            }
 
             // 2️⃣ Extract keywords from uploaded text
             var uploadedKeywords = ExtractKeywords(uploadedText);
             Console.WriteLine($"📝 Uploaded keywords: {string.Join(", ", uploadedKeywords)}");
 
-            // 3️⃣ Find similar projects using AI
+            // 3️⃣ Find similar projects by keyword matching
             var similarProjects = new List<dynamic>();
+            var matchedProjectSummaries = new List<string>();
             var matchingKeywords = new HashSet<string>();
             var newKeywords = new HashSet<string>(uploadedKeywords);
 
             foreach (var project in allProjects)
             {
                 var projectText = $"{(project.Title ?? "")} {(project.Abstraction ?? "")} {(project.Description ?? "")}".ToLower();
-                var projectKeywords = ExtractKeywords(projectText);
 
-                // Count matching keywords
                 int matchCount = 0;
                 var projectMatches = new List<string>();
 
@@ -184,7 +178,6 @@ public class AiController : ControllerBase
                     }
                 }
 
-                // If 1+ keywords match, consider it similar (was 2+)
                 if (matchCount >= 1)
                 {
                     int similarity = uploadedKeywords.Count > 0
@@ -201,13 +194,77 @@ public class AiController : ControllerBase
                         matchedKeywords = projectMatches,
                         dateCompleted = project.DateCompleted
                     });
+
+                    // Collect summaries for AI analysis
+                    matchedProjectSummaries.Add($"Title: {project.Title}\nAbstract: {project.Abstraction ?? "N/A"}");
+                }
+            }
+
+            bool isDuplicate = similarProjects.Count > 0;
+
+            // 4️⃣ If matches found, ask AI to analyze new features
+            var newFeatures = new List<string>();
+            string aiSummary = "";
+            string recommendation = "";
+
+            if (isDuplicate && matchedProjectSummaries.Count > 0)
+            {
+                Console.WriteLine("🤖 Asking AI to analyze new features...");
+                var aiResult = await groqAi.AnalyzeNewFeaturesAsync(originalText, matchedProjectSummaries);
+
+                if (aiResult != null)
+                {
+                    try
+                    {
+                        // Clean up markdown code fences if AI wraps response
+                        var cleanJson = aiResult.Trim();
+                        if (cleanJson.StartsWith("```"))
+                        {
+                            cleanJson = cleanJson.Substring(cleanJson.IndexOf('{'));
+                            cleanJson = cleanJson.Substring(0, cleanJson.LastIndexOf('}') + 1);
+                        }
+
+                        var parsed = JsonDocument.Parse(cleanJson);
+                        
+                        if (parsed.RootElement.TryGetProperty("newFeatures", out var featuresEl))
+                        {
+                            foreach (var f in featuresEl.EnumerateArray())
+                            {
+                                var featureText = f.GetString();
+                                if (!string.IsNullOrWhiteSpace(featureText))
+                                    newFeatures.Add(featureText);
+                            }
+                        }
+
+                        if (parsed.RootElement.TryGetProperty("summary", out var summaryEl))
+                            aiSummary = summaryEl.GetString() ?? "";
+
+                        if (parsed.RootElement.TryGetProperty("recommendation", out var recEl))
+                            recommendation = recEl.GetString() ?? "";
+
+                        Console.WriteLine($"✅ AI found {newFeatures.Count} new feature(s)");
+                    }
+                    catch (Exception parseEx)
+                    {
+                        Console.WriteLine($"⚠️ Could not parse AI features response: {parseEx.Message}");
+                        Console.WriteLine($"  Raw: {aiResult}");
+                    }
                 }
             }
 
             Console.WriteLine($"✅ Found {similarProjects.Count} similar project(s)");
-            Console.WriteLine($"🏷️ New keywords: {string.Join(", ", newKeywords)}");
 
-            bool isDuplicate = similarProjects.Count > 0;
+            string analysis;
+            if (isDuplicate)
+            {
+                analysis = !string.IsNullOrEmpty(aiSummary)
+                    ? aiSummary
+                    : $"Found {similarProjects.Count} similar project(s). Matching keywords: {string.Join(", ", matchingKeywords)}";
+            }
+            else
+            {
+                analysis = "No similar projects found. This appears to be a unique project!";
+            }
 
             var response = new
             {
@@ -215,9 +272,9 @@ public class AiController : ControllerBase
                 similarProjects = similarProjects,
                 matchingKeywords = matchingKeywords.ToList(),
                 newKeywords = newKeywords.ToList(),
-                analysis = isDuplicate
-                    ? $"Found {similarProjects.Count} similar project(s). Matching keywords: {string.Join(", ", matchingKeywords)}"
-                    : "No similar projects found. This is a unique project!"
+                newFeatures = newFeatures,
+                recommendation = recommendation,
+                analysis = analysis
             };
 
             return Ok(response);
