@@ -316,12 +316,42 @@ namespace StudentAPI.Controllers
         {
             try
             {
-                // Create the project
+                string extractedText = "";
+                int tempProjectId = 0;
+                // Upload file if provided (extract text first if possible)
+                if (file != null && file.Length > 0)
+                {
+                    var uploadPath = Path.Combine(
+                        _environment.ContentRootPath,
+                        "Uploads",
+                        "Projects",
+                        "temp_extract"
+                    );
+                    Directory.CreateDirectory(uploadPath);
+
+                    var originalFileName = file.FileName;
+                    var fileName = $"{Guid.NewGuid()}_{originalFileName}";
+                    var filePath = Path.Combine(uploadPath, fileName);
+
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+
+                    // Extract text from file
+                    var extractor = new FileTextExtractor();
+                    extractedText = extractor.ExtractText(filePath);
+
+                    // Clean up temp file
+                    System.IO.File.Delete(filePath);
+                }
+
+                // Create the project, using extracted text as abstraction if available
                 var project = new Project
                 {
                     Title = title ?? "Untitled Project",
                     Description = description ?? "",
-                    Abstraction = abstraction ?? "",
+                    Abstraction = !string.IsNullOrWhiteSpace(extractedText) ? extractedText : (abstraction ?? ""),
                     Status = "Completed",
                     CreatedBy = createdBy ?? "Previous Student",
                     Batch = batch ?? DateTime.Now.Year.ToString(),
@@ -334,7 +364,7 @@ namespace StudentAPI.Controllers
                 _context.Projects.Add(project);
                 await _context.SaveChangesAsync();
 
-                // Upload file if provided
+                // Save the file to the real project folder
                 if (file != null && file.Length > 0)
                 {
                     var uploadPath = Path.Combine(
@@ -426,6 +456,38 @@ namespace StudentAPI.Controllers
                 await _context.SaveChangesAsync();
 
                 return Ok(new { message = "File uploaded successfully", fileName });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // ==================== ADMIN: BULK UPDATE PROJECT ABSTRACTIONS ====================
+        [HttpPost("projects/update-abstractions")]
+        public async Task<IActionResult> BulkUpdateProjectAbstractions()
+        {
+            try
+            {
+                var projects = _context.Projects.ToList();
+                int updated = 0;
+                foreach (var project in projects)
+                {
+                    // Find the file for this project
+                    var file = _context.ProjectFiles.FirstOrDefault(f => f.ProjectId == project.ProjectId);
+                    if (file != null && System.IO.File.Exists(file.FilePath))
+                    {
+                        var extractor = new FileTextExtractor();
+                        var extractedText = extractor.ExtractText(file.FilePath);
+                        if (!string.IsNullOrWhiteSpace(extractedText))
+                        {
+                            project.Abstraction = extractedText;
+                            updated++;
+                        }
+                    }
+                }
+                await _context.SaveChangesAsync();
+                return Ok(new { message = $"Updated {updated} project abstractions to full extracted text." });
             }
             catch (Exception ex)
             {

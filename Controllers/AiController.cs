@@ -99,42 +99,39 @@ public class AiController : ControllerBase
     }
 
     [HttpPost("detect-duplicate")]
+    [Consumes("multipart/form-data")]
     public async Task<IActionResult> DetectDuplicate(
-        [FromBody] DfdRequest request,
+        [FromForm] IFormFile file,
         [FromServices] AppDbContext db,
-        [FromServices] GroqAiService groqAi
+        [FromServices] GroqAiService groqAi,
+        [FromServices] FileTextExtractor extractor
     )
     {
         Console.WriteLine("🔍 DETECT DUPLICATE ENDPOINT CALLED!");
 
-        if (string.IsNullOrWhiteSpace(request.AbstractText))
-        {
-            Console.WriteLine("❌ Abstract is empty");
-            return BadRequest(new { error = "Abstract is required" });
-        }
+        if (file == null || file.Length == 0)
+            return BadRequest(new { error = "No file uploaded" });
 
         try
         {
-            var uploadedText = request.AbstractText;
-            
-            // Try to decode if it's base64 (for PDF/binary files)
-            try
+            // 1️⃣ Save file temporarily and extract text properly (PdfPig/OpenXml)
+            var tempPath = Path.Combine(Path.GetTempPath(), file.FileName);
+            using (var stream = new FileStream(tempPath, FileMode.Create))
             {
-                byte[] data = Convert.FromBase64String(uploadedText);
-                uploadedText = ExtractTextFromBinary(data);
-                Console.WriteLine($"📄 Decoded base64 - extracted {uploadedText.Length} characters");
+                await file.CopyToAsync(stream);
             }
-            catch
-            {
-                // Not base64, use as-is
-                Console.WriteLine($"📝 Using text as-is ({uploadedText.Length} characters)");
-            }
-            
-            var originalText = uploadedText; // Keep original case for AI analysis
-            uploadedText = uploadedText.ToLower();
-            
-            // 1️⃣ Get ALL projects from database
+
+            var uploadedText = extractor.ExtractText(tempPath);
+            System.IO.File.Delete(tempPath);
+
+            if (string.IsNullOrWhiteSpace(uploadedText))
+                return BadRequest(new { error = "Could not extract text from file. Please upload a PDF or DOCX." });
+
+            Console.WriteLine($"📄 Extracted {uploadedText.Length} chars from {file.FileName}");
+
+            // 2️⃣ Get ALL projects from database that have abstractions
             var allProjects = db.Projects
+                .Where(p => p.Abstraction != null && p.Abstraction != "")
                 .Select(p => new
                 {
                     p.ProjectId,
@@ -150,73 +147,90 @@ public class AiController : ControllerBase
 
             Console.WriteLine($"📊 Found {allProjects.Count} projects in database");
 
-            // 2️⃣ Extract keywords from uploaded text
-            var uploadedKeywords = ExtractKeywords(uploadedText);
-            Console.WriteLine($"📝 Uploaded keywords: {string.Join(", ", uploadedKeywords)}");
+            if (allProjects.Count == 0)
+            {
+                return Ok(new
+                {
+                    isDuplicate = false,
+                    similarProjects = new List<object>(),
+                    newFeatures = new List<string>(),
+                    recommendation = "",
+                    analysis = "No existing projects in database to compare against. This is a unique project!",
+                    debugExtractedText = uploadedText,
+                    debugDatabaseAbstractions = allProjects.Select(p => new { p.ProjectId, p.Title, p.Abstraction }).ToList()
+                });
+            }
 
-            // 3️⃣ Find similar projects by keyword matching
-            var similarProjects = new List<dynamic>();
-            var matchedProjectSummaries = new List<string>();
-            var matchingKeywords = new HashSet<string>();
-            var newKeywords = new HashSet<string>(uploadedKeywords);
+            // STRICT DUPLICATE CHECK: Normalized exact text match
+            string Normalize(string text)
+            {
+                if (string.IsNullOrEmpty(text)) return "";
+                var sb = new System.Text.StringBuilder();
+                foreach (var c in text.ToLowerInvariant())
+                {
+                    if (char.IsLetterOrDigit(c)) sb.Append(c);
+                }
+                return sb.ToString();
+            }
+
+            var normalizedUploaded = Normalize(uploadedText);
+            var exactMatch = allProjects.FirstOrDefault(p => Normalize(p.Abstraction ?? "") == normalizedUploaded);
+
+            // Debug logging for troubleshooting
+            if (exactMatch == null)
+            {
+                Console.WriteLine("==== DUPLICATE CHECK DEBUG ====");
+                Console.WriteLine($"Uploaded (normalized): {normalizedUploaded}");
+                foreach (var p in allProjects)
+                {
+                    Console.WriteLine($"DB Project: {p.Title}");
+                    Console.WriteLine($"Abstraction (normalized): {Normalize(p.Abstraction ?? "")}");
+                }
+                Console.WriteLine("==== END DEBUG ====");
+            }
+
+            if (exactMatch != null)
+            {
+                return Ok(new
+                {
+                    isDuplicate = true,
+                    similarProjects = new List<object>
+                    {
+                        new {
+                            name = exactMatch.Title ?? "Unknown",
+                            batch = exactMatch.Batch ?? "N/A",
+                            group = exactMatch.TeamMembers ?? "N/A",
+                            createdBy = exactMatch.CreatedBy ?? "N/A",
+                            similarity = 100,
+                            reason = "Exact match found. This project is already done.",
+                            dateCompleted = exactMatch.DateCompleted
+                        }
+                    },
+                    newFeatures = new List<string>(),
+                    recommendation = "",
+                    analysis = "Already Done! This project is identical to an existing one.",
+                    totalChecked = allProjects.Count,
+                    debugExtractedText = uploadedText,
+                    debugDatabaseAbstractions = allProjects.Select(p => new { p.ProjectId, p.Title, p.Abstraction }).ToList()
+                });
+            }
+
+            // 3️⃣ Use AI to compare against each project (batch up to 5 at a time for context)
+            var results = new List<object>();
 
             foreach (var project in allProjects)
             {
-                var projectText = $"{(project.Title ?? "")} {(project.Abstraction ?? "")} {(project.Description ?? "")}".ToLower();
-
-                int matchCount = 0;
-                var projectMatches = new List<string>();
-
-                foreach (var keyword in uploadedKeywords)
-                {
-                    if (projectText.Contains(keyword))
-                    {
-                        matchCount++;
-                        matchingKeywords.Add(keyword);
-                        projectMatches.Add(keyword);
-                        newKeywords.Remove(keyword);
-                    }
-                }
-
-                if (matchCount >= 1)
-                {
-                    int similarity = uploadedKeywords.Count > 0
-                        ? (int)((matchCount / (float)uploadedKeywords.Count) * 100)
-                        : 0;
-
-                    similarProjects.Add(new
-                    {
-                        name = project.Title ?? "Unknown",
-                        batch = project.Batch ?? "N/A",
-                        group = project.TeamMembers ?? "N/A",
-                        createdBy = project.CreatedBy ?? "N/A",
-                        similarity = similarity,
-                        matchedKeywords = projectMatches,
-                        dateCompleted = project.DateCompleted
-                    });
-
-                    // Collect summaries for AI analysis
-                    matchedProjectSummaries.Add($"Title: {project.Title}\nAbstract: {project.Abstraction ?? "N/A"}");
-                }
-            }
-
-            bool isDuplicate = similarProjects.Count > 0;
-
-            // 4️⃣ If matches found, ask AI to analyze new features
-            var newFeatures = new List<string>();
-            string aiSummary = "";
-            string recommendation = "";
-
-            if (isDuplicate && matchedProjectSummaries.Count > 0)
-            {
-                Console.WriteLine("🤖 Asking AI to analyze new features...");
-                var aiResult = await groqAi.AnalyzeNewFeaturesAsync(originalText, matchedProjectSummaries);
+                var existingText = $"{project.Title}\n{project.Abstraction}";
+                var aiResult = await groqAi.CheckSimilarityAsync(
+                    uploadedText.Length > 3000 ? uploadedText.Substring(0, 3000) : uploadedText,
+                    existingText,
+                    project.Title ?? ""
+                );
 
                 if (aiResult != null)
                 {
                     try
                     {
-                        // Clean up markdown code fences if AI wraps response
                         var cleanJson = aiResult.Trim();
                         if (cleanJson.StartsWith("```"))
                         {
@@ -225,124 +239,113 @@ public class AiController : ControllerBase
                         }
 
                         var parsed = JsonDocument.Parse(cleanJson);
-                        
-                        if (parsed.RootElement.TryGetProperty("newFeatures", out var featuresEl))
+                        var similarity = parsed.RootElement.GetProperty("similarity").GetInt32();
+                        var reason = parsed.RootElement.GetProperty("reason").GetString() ?? "";
+
+                        if (similarity >= 25)
                         {
-                            foreach (var f in featuresEl.EnumerateArray())
+                            results.Add(new
                             {
-                                var featureText = f.GetString();
-                                if (!string.IsNullOrWhiteSpace(featureText))
-                                    newFeatures.Add(featureText);
-                            }
+                                name = project.Title ?? "Unknown",
+                                batch = project.Batch ?? "N/A",
+                                group = project.TeamMembers ?? "N/A",
+                                createdBy = project.CreatedBy ?? "N/A",
+                                similarity = similarity,
+                                reason = reason,
+                                dateCompleted = project.DateCompleted
+                            });
                         }
-
-                        if (parsed.RootElement.TryGetProperty("summary", out var summaryEl))
-                            aiSummary = summaryEl.GetString() ?? "";
-
-                        if (parsed.RootElement.TryGetProperty("recommendation", out var recEl))
-                            recommendation = recEl.GetString() ?? "";
-
-                        Console.WriteLine($"✅ AI found {newFeatures.Count} new feature(s)");
                     }
                     catch (Exception parseEx)
                     {
-                        Console.WriteLine($"⚠️ Could not parse AI features response: {parseEx.Message}");
-                        Console.WriteLine($"  Raw: {aiResult}");
+                        Console.WriteLine($"⚠️ Could not parse AI response for {project.Title}: {parseEx.Message}");
                     }
                 }
             }
 
-            Console.WriteLine($"✅ Found {similarProjects.Count} similar project(s)");
+            // Sort by similarity descending
+            results = results.OrderByDescending(r => ((dynamic)r).similarity).ToList();
 
-            string analysis;
+            bool isDuplicate = results.Count > 0;
+
+            // 4️⃣ If matches found, ask AI to identify unique features
+            var newFeatures = new List<string>();
+            string aiSummary = "";
+            string recommendation = "";
+
             if (isDuplicate)
             {
-                analysis = !string.IsNullOrEmpty(aiSummary)
-                    ? aiSummary
-                    : $"Found {similarProjects.Count} similar project(s). Matching keywords: {string.Join(", ", matchingKeywords)}";
-            }
-            else
-            {
-                analysis = "No similar projects found. This appears to be a unique project!";
+                var matchedSummaries = allProjects
+                    .Where(p => results.Any(r => ((dynamic)r).name == p.Title))
+                    .Select(p => $"Title: {p.Title}\nAbstract: {p.Abstraction ?? "N/A"}")
+                    .Take(5)
+                    .ToList();
+
+                if (matchedSummaries.Count > 0)
+                {
+                    Console.WriteLine("🤖 Asking AI to analyze new features...");
+                    var truncatedUpload = uploadedText.Length > 3000 ? uploadedText.Substring(0, 3000) : uploadedText;
+                    var aiFeatureResult = await groqAi.AnalyzeNewFeaturesAsync(truncatedUpload, matchedSummaries);
+
+                    if (aiFeatureResult != null)
+                    {
+                        try
+                        {
+                            var cleanJson = aiFeatureResult.Trim();
+                            if (cleanJson.StartsWith("```"))
+                            {
+                                cleanJson = cleanJson.Substring(cleanJson.IndexOf('{'));
+                                cleanJson = cleanJson.Substring(0, cleanJson.LastIndexOf('}') + 1);
+                            }
+
+                            var parsed = JsonDocument.Parse(cleanJson);
+
+                            if (parsed.RootElement.TryGetProperty("newFeatures", out var featuresEl))
+                            {
+                                foreach (var f in featuresEl.EnumerateArray())
+                                {
+                                    var featureText = f.GetString();
+                                    if (!string.IsNullOrWhiteSpace(featureText))
+                                        newFeatures.Add(featureText);
+                                }
+                            }
+
+                            if (parsed.RootElement.TryGetProperty("summary", out var summaryEl))
+                                aiSummary = summaryEl.GetString() ?? "";
+
+                            if (parsed.RootElement.TryGetProperty("recommendation", out var recEl))
+                                recommendation = recEl.GetString() ?? "";
+                        }
+                        catch (Exception parseEx)
+                        {
+                            Console.WriteLine($"⚠️ Could not parse AI features: {parseEx.Message}");
+                        }
+                    }
+                }
             }
 
-            var response = new
+            string analysis = isDuplicate
+                ? (!string.IsNullOrEmpty(aiSummary) ? aiSummary : $"Found {results.Count} similar project(s) in the database.")
+                : "No similar projects found. This appears to be a unique project!";
+
+            Console.WriteLine($"✅ Result: {results.Count} similar project(s) found");
+
+            return Ok(new
             {
                 isDuplicate = isDuplicate,
-                similarProjects = similarProjects,
-                matchingKeywords = matchingKeywords.ToList(),
-                newKeywords = newKeywords.ToList(),
+                similarProjects = results,
                 newFeatures = newFeatures,
                 recommendation = recommendation,
-                analysis = analysis
-            };
-
-            return Ok(response);
+                analysis = analysis,
+                totalChecked = allProjects.Count,
+                debugExtractedText = uploadedText,
+                debugDatabaseAbstractions = allProjects.Select(p => new { p.ProjectId, p.Title, p.Abstraction }).ToList()
+            });
         }
         catch (Exception ex)
         {
             Console.WriteLine($"💥 Exception: {ex.Message}");
             return BadRequest(new { error = $"Error: {ex.Message}" });
-        }
-    }
-
-    private List<string> ExtractKeywords(string text)
-    {
-        var commonWords = new HashSet<string>
-        {
-            "project", "new", "based", "using", "proposed", "abstract",
-            "the", "a", "an", "and", "or", "is", "are", "be", "by", "in", "on", "at", "to", "for"
-        };
-
-        return text
-            .Replace(System.Environment.NewLine, " ")
-            .Split(new[] { ' ', '.', ',', ';', ':', '!', '?', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
-            .Where(word => word.Length >= 4 && !commonWords.Contains(word.ToLower()))
-            .Distinct()
-            .ToList();
-    }
-
-    private string ExtractTextFromBinary(byte[] data)
-    {
-        try
-        {
-            // Extract text from PDF by getting only readable ASCII characters
-            var sb = new System.Text.StringBuilder();
-            
-            for (int i = 0; i < data.Length; i++)
-            {
-                byte b = data[i];
-                
-                // Keep only readable ASCII characters
-                if ((b >= 48 && b <= 57) ||   // 0-9
-                    (b >= 65 && b <= 90) ||   // A-Z
-                    (b >= 97 && b <= 122) ||  // a-z
-                    b == 32 ||                 // space
-                    b == 45)                   // hyphen
-                {
-                    sb.Append((char)b);
-                }
-                // Add space for other separators
-                else if (data.Length > i + 1 && sb.Length > 0 && sb[sb.Length - 1] != ' ')
-                {
-                    sb.Append(" ");
-                }
-            }
-            
-            // Remove duplicate spaces
-            var text = System.Text.RegularExpressions.Regex.Replace(
-                sb.ToString(),
-                @"\s+",
-                " "
-            ).Trim();
-            
-            Console.WriteLine($"✅ Extracted from binary: {text.Substring(0, Math.Min(100, text.Length))}");
-            return text;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Error extracting: {ex.Message}");
-            return "";
         }
     }
 
@@ -367,7 +370,7 @@ public class AiController : ControllerBase
             try
             {
                 byte[] data = Convert.FromBase64String(uploadedText);
-                uploadedText = ExtractTextFromBinary(data);
+                uploadedText = System.Text.Encoding.UTF8.GetString(data);
             }
             catch { /* Not base64, use as-is */ }
 
