@@ -62,7 +62,7 @@ public class AiController : ControllerBase
             }
 
             Console.WriteLine("⚠️ Failed to get DFD guidance from Groq");
-            return BadRequest(new { error = "Failed to generate DFD guidance" });
+            return BadRequest(new { error = "Failed to generate DFD guidance. The AI service may be temporarily unavailable. Please try again." });
         }
         catch (Exception ex)
         {

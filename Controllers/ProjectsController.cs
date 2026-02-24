@@ -91,7 +91,7 @@ namespace StudentAPI.Controllers
         }
 
         // --------------------
-        // GET PREVIOUS YEAR PROJECTS (Admin-uploaded, TeacherId=0)
+        // GET PREVIOUS YEAR PROJECTS (Admin-uploaded & Student-uploaded, no CompletionStages)
         // --------------------
         [HttpGet("previous-year")]
         public IActionResult GetPreviousYearProjects()
@@ -99,7 +99,7 @@ namespace StudentAPI.Controllers
             try
             {
                 var projects = _context.Projects
-                    .Where(p => p.TeacherId == 0)
+                    .Where(p => p.CompletionStages == null)
                     .OrderByDescending(p => p.CreatedAt)
                     .Select(p => new
                     {
@@ -219,7 +219,7 @@ namespace StudentAPI.Controllers
                         CreatedBy = createdBy ?? "Student",
                         Batch = batch ?? DateTime.Now.Year.ToString(),
                         TeamMembers = teamMembers ?? "Solo",
-                        TeacherId = 1,
+                        TeacherId = 0, // Student uploads are not teacher-assigned projects
                         CreatedAt = DateTime.UtcNow,
                         DateCompleted = DateTime.UtcNow
                     };

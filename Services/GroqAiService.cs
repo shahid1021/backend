@@ -15,7 +15,17 @@ public class GroqAiService
     public async Task<string?> GenerateDfdAsync(string abstractText)
     {
         if (string.IsNullOrEmpty(_apiKey))
+        {
+            Console.WriteLine("❌ ERROR: Groq API key is missing!");
             return null;
+        }
+
+        // Truncate very long text to avoid exceeding Groq token limits
+        if (abstractText.Length > 4000)
+        {
+            Console.WriteLine($"⚠️ Truncating abstract from {abstractText.Length} to 4000 chars");
+            abstractText = abstractText.Substring(0, 4000);
+        }
 
         var prompt = $@"
 Based on the following project abstract, provide DETAILED guidance on how to CREATE a DFD (Data Flow Diagram).
@@ -56,6 +66,8 @@ Format the response with clear sections and bullet points.
         _httpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _apiKey);
 
+        Console.WriteLine($"🤖 Calling Groq API for DFD guidance (text length: {abstractText.Length} chars)");
+
         try
         {
             var response = await _httpClient.PostAsync(
@@ -68,7 +80,11 @@ Format the response with clear sections and bullet points.
             );
 
             if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ Groq DFD API Error ({response.StatusCode}): {errorContent}");
                 return null;
+            }
 
             var responseContent = await response.Content.ReadAsStringAsync();
             var jsonDoc = JsonDocument.Parse(responseContent);

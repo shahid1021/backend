@@ -29,8 +29,14 @@ namespace StudentAPI.Controllers
                 var totalStudents = _context.Users.Count(u => u.Role == "Student");
                 var totalTeachers = _context.Users.Count(u => u.Role == "Teacher");
                 var totalProjects = _context.Projects.Count();
-                var completedProjects = _context.Projects.Count(p => p.Status == "Completed");
-                var ongoingProjects = totalProjects - completedProjects;
+                
+                // Only count teacher-created projects (those with CompletionStages) for live stats
+                // Only the teacher workflow (TeacherProjectsController.Create) sets CompletionStages
+                // Student uploads and admin uploads do NOT have CompletionStages
+                var completedProjects = _context.Projects.Count(p => p.CompletionStages != null && p.Status == "Completed");
+                var ongoingProjects = _context.Projects.Count(p => p.CompletionStages != null && p.Status != "Completed");
+                var uploadedProjects = _context.Projects.Count(p => p.CompletionStages == null);
+                
                 var totalFiles = _context.ProjectFiles.Count();
                 var totalNotifications = _context.TeacherNotifications.Count();
 
@@ -47,6 +53,7 @@ namespace StudentAPI.Controllers
                     totalProjects,
                     completedProjects,
                     ongoingProjects,
+                    uploadedProjects,
                     totalFiles,
                     totalNotifications,
                     recentUsers
@@ -518,21 +525,71 @@ namespace StudentAPI.Controllers
         }
 
         [HttpPost("standalone-trending-projects")] // Add new trending project
-        public IActionResult AddStandaloneTrendingProject([FromBody] StandaloneTrendingProject request)
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> AddStandaloneTrendingProject(
+            [FromForm] string title,
+            [FromForm] string? abstraction,
+            [FromForm(Name = "File")] IFormFile? file)
         {
-            if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Abstraction))
+            try
             {
-                return BadRequest(new { message = "Title and abstraction are required." });
+                if (string.IsNullOrWhiteSpace(title))
+                {
+                    return BadRequest(new { message = "Title is required." });
+                }
+
+                string abstractionText = abstraction ?? "";
+
+                // If a PDF/DOCX file is uploaded, extract text and use it as abstraction
+                if (file != null && file.Length > 0)
+                {
+                    var uploadPath = Path.Combine(
+                        _environment.ContentRootPath,
+                        "Uploads",
+                        "TrendingProjects",
+                        "temp_extract"
+                    );
+                    Directory.CreateDirectory(uploadPath);
+
+                    var fileName = $"{Guid.NewGuid()}_{file.FileName}";
+                    var filePath = Path.Combine(uploadPath, fileName);
+
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+
+                    var extractor = new FileTextExtractor();
+                    var extractedText = extractor.ExtractText(filePath);
+
+                    // Clean up temp file
+                    System.IO.File.Delete(filePath);
+
+                    if (!string.IsNullOrWhiteSpace(extractedText))
+                    {
+                        abstractionText = extractedText;
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(abstractionText))
+                {
+                    return BadRequest(new { message = "Abstraction is required. Provide text or upload a PDF." });
+                }
+
+                var trending = new StandaloneTrendingProject
+                {
+                    Title = title,
+                    Abstraction = abstractionText,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.StandaloneTrendingProjects.Add(trending);
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Standalone trending project added successfully" });
             }
-            var trending = new StandaloneTrendingProject
+            catch (Exception ex)
             {
-                Title = request.Title,
-                Abstraction = request.Abstraction,
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.StandaloneTrendingProjects.Add(trending);
-            _context.SaveChanges();
-            return Ok(new { message = "Standalone trending project added successfully" });
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
 
         [HttpDelete("standalone-trending-projects/{id}")]
