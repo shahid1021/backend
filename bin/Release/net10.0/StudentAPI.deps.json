@@ -10,6 +10,7 @@
         "dependencies": {
           "BCrypt.Net-Next": "4.0.3",
           "DocumentFormat.OpenXml": "3.4.1",
+          "MailKit": "4.15.0",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "8.0.0",
           "Microsoft.EntityFrameworkCore.Design": "9.0.0",
           "Pomelo.EntityFrameworkCore.MySql": "9.0.0",
@@ -26,6 +27,14 @@
           "lib/net6.0/BCrypt.Net-Next.dll": {
             "assemblyVersion": "4.0.3.0",
             "fileVersion": "4.0.3.0"
+          }
+        }
+      },
+      "BouncyCastle.Cryptography/2.6.2": {
+        "runtime": {
+          "lib/net6.0/BouncyCastle.Cryptography.dll": {
+            "assemblyVersion": "2.0.0.0",
+            "fileVersion": "2.6.2.46322"
           }
         }
       },
@@ -56,6 +65,17 @@
           "lib/net6.0/Humanizer.dll": {
             "assemblyVersion": "2.14.0.0",
             "fileVersion": "2.14.1.48190"
+          }
+        }
+      },
+      "MailKit/4.15.0": {
+        "dependencies": {
+          "MimeKit": "4.15.0"
+        },
+        "runtime": {
+          "lib/net10.0/MailKit.dll": {
+            "assemblyVersion": "4.15.0.0",
+            "fileVersion": "4.15.0.0"
           }
         }
       },
@@ -483,6 +503,17 @@
           }
         }
       },
+      "MimeKit/4.15.0": {
+        "dependencies": {
+          "BouncyCastle.Cryptography": "2.6.2"
+        },
+        "runtime": {
+          "lib/net10.0/MimeKit.dll": {
+            "assemblyVersion": "4.15.0.0",
+            "fileVersion": "4.15.0.0"
+          }
+        }
+      },
       "Mono.TextTemplating/3.0.0": {
         "dependencies": {
           "System.CodeDom": "6.0.0"
@@ -771,6 +802,13 @@
       "path": "bcrypt.net-next/4.0.3",
       "hashPath": "bcrypt.net-next.4.0.3.nupkg.sha512"
     },
+    "BouncyCastle.Cryptography/2.6.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-7oWOcvnntmMKNzDLsdxAYqApt+AjpRpP2CShjMfIa3umZ42UQMvH0tl1qAliYPNYO6vTdcGMqnRrCPmsfzTI1w==",
+      "path": "bouncycastle.cryptography/2.6.2",
+      "hashPath": "bouncycastle.cryptography.2.6.2.nupkg.sha512"
+    },
     "DocumentFormat.OpenXml/3.4.1": {
       "type": "package",
       "serviceable": true,
@@ -791,6 +829,13 @@
       "sha512": "sha512-lQKvtaTDOXnoVJ20ibTuSIOf2i0uO0MPbDhd1jm238I+U/2ZnRENj0cktKZhtchBMtCUSRQ5v4xBCUbKNmyVMw==",
       "path": "humanizer.core/2.14.1",
       "hashPath": "humanizer.core.2.14.1.nupkg.sha512"
+    },
+    "MailKit/4.15.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-PM3bNDLwmK2hdiTx8xkTLRMRf9Y0VuirdyHWsrlSlz9hrME0lFkt/rF/9xlK/AtVML86BlS07pEPqo43Cmptbg==",
+      "path": "mailkit/4.15.0",
+      "hashPath": "mailkit.4.15.0.nupkg.sha512"
     },
     "Microsoft.AspNetCore.Authentication.JwtBearer/8.0.0": {
       "type": "package",
@@ -931,6 +976,13 @@
       "sha512": "sha512-tTaBT8qjk3xINfESyOPE2rIellPvB7qpVqiWiyA/lACVvz+xOGiXhFUfohcx82NLbi5avzLW0lx+s6oAqQijfw==",
       "path": "microsoft.openapi/1.6.14",
       "hashPath": "microsoft.openapi.1.6.14.nupkg.sha512"
+    },
+    "MimeKit/4.15.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-+KVUJwHIp1aVPyVjcadAH1M9QkAwLflLujzySAS4N//AqSYjD+wMo2a3PkYu5XDibSuhlAg5sIh/DVNwVNGiVw==",
+      "path": "mimekit/4.15.0",
+      "hashPath": "mimekit.4.15.0.nupkg.sha512"
     },
     "Mono.TextTemplating/3.0.0": {
       "type": "package",

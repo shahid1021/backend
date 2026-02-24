@@ -163,3 +163,12 @@ C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\pu
 C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\publish\StudentAPI.deps.json
 C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\publish\StudentAPI.runtimeconfig.json
 C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\publish\StudentAPI.staticwebassets.endpoints.json
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\publish\publish\web.config
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\publish\publish\appsettings.Development.json
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\publish\publish\appsettings.json
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\publish\publish\StudentAPI.deps.json
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\publish\publish\StudentAPI.runtimeconfig.json
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\publish\publish\publish\publish\StudentAPI.staticwebassets.endpoints.json
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\BouncyCastle.Cryptography.dll
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\MailKit.dll
+C:\Users\sha88\Desktop\project management\backend\bin\Release\net10.0\MimeKit.dll
