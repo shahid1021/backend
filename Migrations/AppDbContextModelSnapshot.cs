@@ -108,6 +108,30 @@ namespace StudentAPI.Migrations
                     b.ToTable("ProjectFiles");
                 });
 
+            modelBuilder.Entity("StudentAPI.Models.StandaloneTrendingProject", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Abstraction")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("StandaloneTrendingProjects");
+                });
+
             modelBuilder.Entity("StudentAPI.Models.TeacherNotification", b =>
                 {
                     b.Property<int>("Id")

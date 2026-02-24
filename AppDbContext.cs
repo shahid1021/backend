@@ -14,5 +14,7 @@ namespace StudentAPI
         public DbSet<Project> Projects { get; set; }
         public DbSet<ProjectFile> ProjectFiles { get; set; }
         public DbSet<TeacherNotification> TeacherNotifications { get; set; }
+        // Removed TrendingProjects DbSet; trending projects are now managed in a separate table.
+        public DbSet<StandaloneTrendingProject> StandaloneTrendingProjects { get; set; }
     }
 }

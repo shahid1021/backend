@@ -11,6 +11,8 @@ namespace StudentAPI.Controllers
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _environment;
 
+        // Trending project logic removed. Use StandaloneTrendingProject endpoints instead.
+
         public AdminController(AppDbContext context, IWebHostEnvironment environment)
         {
             _context = context;
@@ -493,6 +495,55 @@ namespace StudentAPI.Controllers
             {
                 return StatusCode(500, new { error = ex.Message });
             }
+        }
+
+        // ==================== TRENDING PROJECTS (for student app) ====================
+        [HttpGet("trending-projects")]
+        public IActionResult GetTrendingProjects()
+        {
+            var trending = _context.StandaloneTrendingProjects
+                .OrderByDescending(t => t.CreatedAt)
+                .ToList();
+            return Ok(new { count = trending.Count, projects = trending });
+        }
+
+        // ==================== STANDALONE TRENDING PROJECTS ====================
+        [HttpGet("standalone-trending-projects")]
+        public IActionResult GetStandaloneTrendingProjects()
+        {
+            var trending = _context.StandaloneTrendingProjects
+                .OrderByDescending(t => t.CreatedAt)
+                .ToList();
+            return Ok(new { count = trending.Count, projects = trending });
+        }
+
+        [HttpPost("standalone-trending-projects")] // Add new trending project
+        public IActionResult AddStandaloneTrendingProject([FromBody] StandaloneTrendingProject request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Abstraction))
+            {
+                return BadRequest(new { message = "Title and abstraction are required." });
+            }
+            var trending = new StandaloneTrendingProject
+            {
+                Title = request.Title,
+                Abstraction = request.Abstraction,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.StandaloneTrendingProjects.Add(trending);
+            _context.SaveChanges();
+            return Ok(new { message = "Standalone trending project added successfully" });
+        }
+
+        [HttpDelete("standalone-trending-projects/{id}")]
+        public IActionResult DeleteStandaloneTrendingProject(int id)
+        {
+            var trending = _context.StandaloneTrendingProjects.FirstOrDefault(t => t.Id == id);
+            if (trending == null)
+                return NotFound(new { message = "Trending project not found" });
+            _context.StandaloneTrendingProjects.Remove(trending);
+            _context.SaveChanges();
+            return Ok(new { message = "Trending project deleted" });
         }
     }
 

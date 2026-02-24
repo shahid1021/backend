@@ -15,5 +15,6 @@
         public int TeacherId { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? DateCompleted { get; set; }
+        // Removed IsTrending property; trending projects are now managed in a separate table.
     }
 }
