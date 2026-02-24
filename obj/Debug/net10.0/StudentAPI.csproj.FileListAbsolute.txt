@@ -155,11 +155,9 @@ C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\Swashbuckle.
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerGen.dll
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerUI.dll
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\System.IdentityModel.Tokens.Jwt.dll
-C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\UglyToad.PdfPig.dll
-C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\UglyToad.PdfPig.Core.dll
-C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\UglyToad.PdfPig.Fonts.dll
-C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\UglyToad.PdfPig.Tokenization.dll
-C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\UglyToad.PdfPig.Tokens.dll
+C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\BCrypt.Net-Next.dll
+C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\publish\publish\publish\publish\web.config
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\publish\publish\publish\web.config
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\publish\publish\web.config
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\publish\web.config
@@ -174,6 +172,11 @@ C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\publ
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\publish\publish\appsettings.json
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\publish\publish\publish\appsettings.Development.json
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\publish\publish\publish\appsettings.json
+C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\publish\publish\publish\publish\appsettings.Development.json
+C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\publish\publish\publish\publish\appsettings.json
+C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\publish\publish\publish\publish\StudentAPI.deps.json
+C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\publish\publish\publish\publish\StudentAPI.runtimeconfig.json
+C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\publish\publish\publish\publish\StudentAPI.staticwebassets.endpoints.json
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\publish\publish\publish\StudentAPI.deps.json
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\publish\publish\publish\StudentAPI.runtimeconfig.json
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\publish\publish\publish\StudentAPI.staticwebassets.endpoints.json
@@ -186,8 +189,8 @@ C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\publ
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\StudentAPI.deps.json
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\StudentAPI.runtimeconfig.json
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\publish\StudentAPI.staticwebassets.endpoints.json
+C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\StudentAPI.staticwebassets.runtime.json
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\StudentAPI.staticwebassets.endpoints.json
-C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\BCrypt.Net-Next.dll
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\BouncyCastle.Cryptography.dll
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\DocumentFormat.OpenXml.dll
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\DocumentFormat.OpenXml.Framework.dll
@@ -203,7 +206,6 @@ C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\Microsoft.Co
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\Microsoft.CodeAnalysis.Workspaces.MSBuild.dll
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\Microsoft.EntityFrameworkCore.Design.dll
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\Microsoft.Extensions.DependencyModel.dll
-C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\Microsoft.IdentityModel.Abstractions.dll
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\MimeKit.dll
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\Mono.TextTemplating.dll
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\System.CodeDom.dll
@@ -214,6 +216,11 @@ C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\System.Compo
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\System.Composition.TypedParts.dll
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\System.Data.SqlClient.dll
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\System.IO.Packaging.dll
+C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\UglyToad.PdfPig.dll
+C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\UglyToad.PdfPig.Core.dll
+C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\UglyToad.PdfPig.Fonts.dll
+C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\UglyToad.PdfPig.Tokenization.dll
+C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\UglyToad.PdfPig.Tokens.dll
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\cs\Microsoft.CodeAnalysis.resources.dll
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\de\Microsoft.CodeAnalysis.resources.dll
 C:\Users\sha88\Desktop\project management\backend\bin\Debug\net10.0\es\Microsoft.CodeAnalysis.resources.dll
@@ -297,6 +304,9 @@ C:\Users\sha88\Desktop\project management\backend\obj\Debug\net10.0\rjimswa.dswa
 C:\Users\sha88\Desktop\project management\backend\obj\Debug\net10.0\rjsmrazor.dswa.cache.json
 C:\Users\sha88\Desktop\project management\backend\obj\Debug\net10.0\rjsmcshtml.dswa.cache.json
 C:\Users\sha88\Desktop\project management\backend\obj\Debug\net10.0\scopedcss\bundle\StudentAPI.styles.css
+C:\Users\sha88\Desktop\project management\backend\obj\Debug\net10.0\compressed\ir8wt6mqkf-{0}-ajmedr7k7m-ajmedr7k7m.gz
+C:\Users\sha88\Desktop\project management\backend\obj\Debug\net10.0\compressed\6kqu1twa90-{0}-djey7knc99-djey7knc99.gz
+C:\Users\sha88\Desktop\project management\backend\obj\Debug\net10.0\compressed\tqy9ktiwph-{0}-p38hdsbqbo-p38hdsbqbo.gz
 C:\Users\sha88\Desktop\project management\backend\obj\Debug\net10.0\staticwebassets.build.json
 C:\Users\sha88\Desktop\project management\backend\obj\Debug\net10.0\staticwebassets.build.json.cache
 C:\Users\sha88\Desktop\project management\backend\obj\Debug\net10.0\staticwebassets.development.json

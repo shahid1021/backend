@@ -135,6 +135,10 @@ var app = builder.Build();
 
 // app.UseHttpsRedirection();
 
+// Serve static files (admin panel HTML/CSS/JS)
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseCors("AllowAll");
 
 app.UseAuthentication();

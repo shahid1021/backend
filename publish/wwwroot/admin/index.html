@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PRYXEL Admin Panel</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <!-- ========== LOGIN PAGE ========== -->
+    <div id="loginPage" class="login-page">
+        <div class="login-box">
+            <h1>PRYXEL</h1>
+            <p>Admin Panel</p>
+            <input type="email" id="loginEmail" placeholder="Email ID" autocomplete="email">
+            <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+            <button class="login-btn" onclick="handleLogin()">Sign in</button>
+            <div id="loginError" class="login-error"></div>
+        </div>
+    </div>
+
+    <!-- ========== MAIN APP ========== -->
+    <div id="appPage" class="app-container" style="display:none;">
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <h2>PRYXEL</h2>
+                <small>Admin Panel</small>
+            </div>
+            <nav class="sidebar-menu">
+                <div class="sidebar-item active" data-page="dashboard" onclick="switchPage('dashboard')">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" />
+                    </svg>
+                    <span>Dashboard</span>
+                </div>
+                <div class="sidebar-item" data-page="users" onclick="switchPage('users')">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+                    </svg>
+                    <span>Users</span>
+                </div>
+                <div class="sidebar-item" data-page="projects" onclick="switchPage('projects')">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z" />
+                    </svg>
+                    <span>Projects</span>
+                </div>
+                <div class="sidebar-item" data-page="notifications" onclick="switchPage('notifications')">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" />
+                    </svg>
+                    <span>Notifications</span>
+                </div>
+                <div class="sidebar-item" data-page="trending" onclick="switchPage('trending')">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z" />
+                    </svg>
+                    <span>Trending</span>
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="admin-name" id="adminNameDisplay">Admin</div>
+                <button class="logout-btn" onclick="handleLogout()">⎋ Logout</button>
+            </div>
+        </aside>
+
+        <!-- Content Pages -->
+        <main class="main-content">
+
+            <!-- DASHBOARD -->
+            <section id="page-dashboard" class="page-section">
+                <div class="page-header">
+                    <h2>Dashboard Overview</h2>
+                    <button class="refresh-btn" onclick="loadDashboard()" title="Refresh">⟳</button>
+                </div>
+                <div class="stats-grid" id="statsGrid"></div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Completion Rate</h3>
+                    </div>
+                    <div style="padding:20px;">
+                        <div style="display:flex; justify-content:space-between; font-size:13px; color:#666;">
+                            <span>Teacher-Assigned Projects</span>
+                            <span id="completionPct">0%</span>
+                        </div>
+                        <div class="completion-bar-bg">
+                            <div class="completion-bar-fill" id="completionBar" style="width:0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- USERS -->
+            <section id="page-users" class="page-section" style="display:none;">
+                <div class="page-header">
+                    <h2>User Management</h2>
+                    <div style="display:flex;gap:10px;">
+                        <button class="btn btn-primary" onclick="showAddUserModal()">+ Add User</button>
+                        <button class="refresh-btn" onclick="loadUsers()" title="Refresh">⟳</button>
+                    </div>
+                </div>
+                <div class="filter-bar">
+                    <input type="text" id="userSearch" placeholder="Search by name or email..." oninput="filterUsers()">
+                    <select id="userRoleFilter" onchange="filterUsers()">
+                        <option value="">All Roles</option>
+                        <option value="Student">Student</option>
+                        <option value="Teacher">Teacher</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+                <div class="card">
+                    <div class="card-body" id="usersTable"></div>
+                </div>
+            </section>
+
+            <!-- PROJECTS -->
+            <section id="page-projects" class="page-section" style="display:none;">
+                <div class="page-header">
+                    <h2>Projects</h2>
+                    <div style="display:flex;gap:10px;">
+                        <button class="btn btn-primary" onclick="showAddProjectModal()">+ Upload Project</button>
+                        <button class="refresh-btn" onclick="loadProjects()" title="Refresh">⟳</button>
+                    </div>
+                </div>
+                <div class="filter-bar">
+                    <input type="text" id="projectSearch" placeholder="Search by title, batch, or creator..."
+                        oninput="filterProjects()">
+                    <select id="projectStatusFilter" onchange="filterProjects()">
+                        <option value="">All Statuses</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Ongoing">Ongoing</option>
+                    </select>
+                </div>
+                <div id="projectsGrid" class="projects-grid"></div>
+            </section>
+
+            <!-- NOTIFICATIONS -->
+            <section id="page-notifications" class="page-section" style="display:none;">
+                <div class="page-header">
+                    <h2>Notifications</h2>
+                    <button class="refresh-btn" onclick="loadNotifications()" title="Refresh">⟳</button>
+                </div>
+                <div class="notif-layout">
+                    <div class="notif-send">
+                        <div class="card" style="padding:20px;">
+                            <h3 style="margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+                                <span style="color:#e5a72e;">📣</span> Send Notification
+                            </h3>
+                            <div class="form-group">
+                                <label>Sender Name</label>
+                                <input type="text" id="notifSender" placeholder="e.g., Admin">
+                            </div>
+                            <div class="form-group">
+                                <label>Message</label>
+                                <textarea id="notifMessage" placeholder="Type your notification message..."
+                                    rows="5"></textarea>
+                            </div>
+                            <button class="btn btn-primary" style="width:100%" onclick="sendNotification()">📨 Send to
+                                All Students</button>
+                        </div>
+                    </div>
+                    <div class="notif-list">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>All Notifications (<span id="notifCount">0</span>)</h3>
+                                <button class="refresh-btn" onclick="loadNotifications()" title="Refresh">⟳</button>
+                            </div>
+                            <div class="card-body" id="notifList"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TRENDING -->
+            <section id="page-trending" class="page-section" style="display:none;">
+                <div class="page-header">
+                    <h2>Trending Projects</h2>
+                    <div style="display:flex;gap:10px;">
+                        <button class="btn btn-primary" onclick="showAddTrendingModal()">+ Add Trending</button>
+                        <button class="refresh-btn" onclick="loadTrending()" title="Refresh">⟳</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Currently Trending</h3>
+                    </div>
+                    <div class="card-body" id="trendingList"></div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Modals container -->
+    <div id="modalContainer"></div>
+
+    <script src="js/app.js"></script>
+</body>
+
+</html>
