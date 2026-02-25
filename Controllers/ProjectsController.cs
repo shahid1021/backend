@@ -299,20 +299,31 @@ namespace StudentAPI.Controllers
         {
             try
             {
-                var project = _context.Projects.FirstOrDefault(p => p.ProjectId == projectId && p.TeacherId == 0);
-                if (project == null)
-                    return NotFound(new { error = "Project not found or not a previous year project" });
-
                 var fileRecord = _context.ProjectFiles
                     .FirstOrDefault(f => f.ProjectId == projectId && f.FileName == fileName);
 
                 if (fileRecord == null)
                     return NotFound(new { error = "File not found" });
 
-                if (!System.IO.File.Exists(fileRecord.FilePath))
-                    return NotFound(new { error = "Physical file not found" });
+                // Reconstruct the physical path dynamically — stored FilePath may be
+                // from a different machine (e.g. developer's local PC), so we always
+                // resolve from the current server's ContentRootPath.
+                var physicalPath = Path.Combine(
+                    _environment.ContentRootPath,
+                    "Uploads",
+                    "Projects",
+                    projectId.ToString(),
+                    fileName
+                );
 
-                var fileBytes = System.IO.File.ReadAllBytes(fileRecord.FilePath);
+                // Fallback: try the stored path if for some reason the reconstructed path doesn't exist
+                if (!System.IO.File.Exists(physicalPath) && System.IO.File.Exists(fileRecord.FilePath))
+                    physicalPath = fileRecord.FilePath;
+
+                if (!System.IO.File.Exists(physicalPath))
+                    return NotFound(new { error = "Physical file not found on server" });
+
+                var fileBytes = System.IO.File.ReadAllBytes(physicalPath);
                 var contentType = "application/pdf";
                 if (fileRecord.OriginalFileName != null)
                 {
@@ -333,7 +344,7 @@ namespace StudentAPI.Controllers
         }
 
         // --------------------
-        // DOWNLOAD FILE
+        // DOWNLOAD FILE (Authorized - for teacher/student project files)
         // --------------------
         [HttpGet("{projectId}/files/{fileName}/download")]
         [Authorize]
@@ -347,10 +358,23 @@ namespace StudentAPI.Controllers
                 if (fileRecord == null)
                     return NotFound(new { error = "File not found" });
 
-                if (!System.IO.File.Exists(fileRecord.FilePath))
-                    return NotFound(new { error = "Physical file not found" });
+                // Reconstruct the physical path dynamically from the current server's root
+                var physicalPath = Path.Combine(
+                    _environment.ContentRootPath,
+                    "Uploads",
+                    "Projects",
+                    projectId.ToString(),
+                    fileName
+                );
 
-                var fileBytes = System.IO.File.ReadAllBytes(fileRecord.FilePath);
+                // Fallback to stored path if reconstructed path doesn't exist
+                if (!System.IO.File.Exists(physicalPath) && System.IO.File.Exists(fileRecord.FilePath))
+                    physicalPath = fileRecord.FilePath;
+
+                if (!System.IO.File.Exists(physicalPath))
+                    return NotFound(new { error = "Physical file not found on server" });
+
+                var fileBytes = System.IO.File.ReadAllBytes(physicalPath);
 
                 return File(fileBytes, "application/octet-stream", fileRecord.OriginalFileName);
             }

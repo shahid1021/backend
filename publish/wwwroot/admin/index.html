@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PRYXEL Admin Panel</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=3">
 </head>
 
 <body>
@@ -25,11 +25,20 @@
     <!-- ========== MAIN APP ========== -->
     <div id="appPage" class="app-container" style="display:none;">
 
+        <!-- Mobile hamburger button -->
+        <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()">
+            <span></span><span></span><span></span>
+        </button>
+
+        <!-- Sidebar overlay (mobile) -->
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-brand">
                 <h2>PRYXEL</h2>
                 <small>Admin Panel</small>
+                <button class="sidebar-close-btn" onclick="closeSidebar()">✕</button>
             </div>
             <nav class="sidebar-menu">
                 <div class="sidebar-item active" data-page="dashboard" onclick="switchPage('dashboard')">
@@ -205,7 +214,7 @@
     <!-- Modals container -->
     <div id="modalContainer"></div>
 
-    <script src="js/app.js"></script>
+    <script src="js/app.js?v=3"></script>
 </body>
 
 </html>

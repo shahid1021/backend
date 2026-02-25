@@ -73,7 +73,40 @@ function showApp() {
     document.getElementById('loginPage').style.display = 'none';
     document.getElementById('appPage').style.display = 'flex';
     document.getElementById('adminNameDisplay').textContent = adminName;
+    // Explicitly show hamburger button on mobile after login
+    const hamburger = document.getElementById('hamburgerBtn');
+    if (window.innerWidth <= 1024) {
+        hamburger.style.display = 'flex';
+    } else {
+        hamburger.style.display = 'none';
+    }
     switchPage('dashboard');
+}
+
+// ===================== SIDEBAR (MOBILE) =====================
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const hamburger = document.getElementById('hamburgerBtn');
+    const isOpen = sidebar.classList.contains('open');
+    if (isOpen) {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+        hamburger.style.display = 'flex'; // show hamburger again
+    } else {
+        sidebar.classList.add('open');
+        overlay.classList.add('active');
+        hamburger.style.display = 'none'; // hide hamburger — use ✕ inside sidebar
+    }
+}
+
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('active');
+    // Only restore hamburger if on mobile
+    if (window.innerWidth <= 1024) {
+        document.getElementById('hamburgerBtn').style.display = 'flex';
+    }
 }
 
 // ===================== NAVIGATION =====================
@@ -83,6 +116,11 @@ function switchPage(page) {
 
     document.getElementById(`page-${page}`).style.display = 'block';
     document.querySelector(`.sidebar-item[data-page="${page}"]`).classList.add('active');
+
+    // Auto-close sidebar on mobile when a page is selected
+    if (window.innerWidth <= 1024) {
+        closeSidebar();
+    }
 
     // Load data for the page
     switch (page) {
